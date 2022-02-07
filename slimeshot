@@ -1,0 +1,199 @@
+#!/usr/bin/env python
+
+import subprocess
+import os
+from sys import exit
+from datetime import datetime
+from tkinter import *
+from tkinter import filedialog as fd
+from tkinter import simpledialog
+import tkinter.messagebox
+import argparse
+
+#dependencies: xclip, xsel, tk, python, imgmagik, curl
+
+master = Tk()
+master.title("SlimeShot")
+os.system("cd ~")
+
+
+homepath = os.path.expanduser("~")
+confpath = homepath + "/.config/slimeshot.conf"
+
+
+if os.path.exists(confpath) == False:
+	fp = open(confpath, 'w')
+	fp.write("upload 1" + "\n")
+	fp.write("website https://uguu.se/upload.php") 
+	fp.close()
+
+
+fp = open(confpath, 'r')
+content = fp.readlines()
+fp.close()
+
+config = {}
+for i in content:
+	cur = i.split(" ");
+	config.update({cur[0]: cur[1]})
+
+#print(config["upload"])
+up = IntVar()
+up.set(int(config["upload"]))
+
+#xclip -selection clipboard -t image/png -o > /tmp/clipboard.png 
+#xclip -o > /tmp/output_file.txt
+def clear():
+    if os.name == "nt":
+        os.system('cls')
+    else:
+        os.system('clear')
+
+
+
+def clipboard():
+
+	if not (os.system('xclip -o')):
+		clear()
+		print("Uploading text from clipboard as txt file..")
+		os.system('xclip -o > /tmp/clipboard_file.txt')
+		if up.get() == 1:
+			os.system("slimeup -u " + config["website"] + " /tmp/clipboard_file.txt")
+			#os.system('mkdir -p ~/Screenshots/$(date +%Y-%m) && mv /tmp/clipboard_file.txt ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).txt')
+			tkinter.messagebox.showinfo('Upload Successful!', "Textfile link copied to clipboard")
+		else:
+			tkinter.messagebox.showinfo('ERROR!', "You must have upload selected to upload text from clipboard")
+
+
+	else:
+		clear()
+		print("Uploading image from clipboard..")
+		os.system('xclip -selection clipboard -t image/png -o > /tmp/clipboard.png ')
+		if up.get() == 1:
+			os.system("slimeup -u " + config["website"] + " /tmp/clipboard.png")
+			os.system('mkdir -p ~/Screenshots/$(date +%Y-%m) && mv /tmp/clipboard.png ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).png')
+			tkinter.messagebox.showinfo('Upload Successful!', "Image link copied to clipboard")
+		if up.get() == 0:
+			os.system('mkdir -p ~/Screenshots/$(date +%Y-%m) && mv /tmp/clipboard.png ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).png')
+			tkinter.messagebox.showinfo('Image Archived!', "Image moved from clipboard to screenshots folder")
+
+
+def area():
+	if up.get() == 1:
+		os.system("slimeup -u " + config["website"])
+		tkinter.messagebox.showinfo('Upload Successful!', "Image link copied to clipboard")
+	elif up.get() == 0:
+		os.system("slimeup -c")
+		tkinter.messagebox.showinfo('Capture Successful!', "Image dropped in folder")
+
+
+def files():
+
+	if up.get() == 1:
+		os.system("cd ~")
+		path = fd.askopenfilename(initialdir='/home/%s' % os.environ.get('USER'))
+
+
+
+		os.system("cp " + path.replace(" ", "\ ") + " /tmp")
+
+		filename = path.split("/")[-1]
+		newfilename = filename.replace(" ", "_")
+
+		os.system("mv /tmp/" + filename.replace(" ", "\ ") + " /tmp/" + newfilename)
+
+		link = os.system("slimeup -c " + config["website"] + " /tmp/" + newfilename)
+
+		os.system("rm /tmp/" + newfilename)				
+		tkinter.messagebox.showinfo('Upload Successful!', "File link copied to clipboard")
+	else: 
+		tkinter.messagebox.showinfo('ERROR!', "You must have upload selected for this option")
+
+
+def sshots():
+	os.system("xdg-open /home/" + os.environ.get('USER') + "/Screenshots")
+
+def writeNewConf():
+	os.system("rm " + confpath)
+	fp = open(confpath, 'w')
+	fp.write("upload " + str(config["upload"]))
+	fp.write("website " + str(config["website"]) )
+	fp.close()
+
+	
+
+
+def setUp():
+	config["upload"] = up.get()
+	#print(config["upload"])
+	os.system("rm " + confpath)
+	fp = open(confpath, 'w')
+	fp.write("upload " + str(config["upload"]) + "\n")
+	fp.write("website " + str(config["website"]) )
+	fp.close()
+
+
+def changePomf():
+	config["website"] = simpledialog.askstring(title="Pomf Clone",prompt="Enter Pomf site ( Example https://uguu.se/upload.php ):")
+	print(config)
+	writeNewConf()
+
+
+#args
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--screenshot", help="Take screenshot!!", action="store_true")
+parser.add_argument("-eu", "--enableupload", help="Enable screenshot uploading", action="store_true")
+parser.add_argument("-du", "--disableupload", help="Disable screenshot uploading", action="store_true")
+parser.add_argument("-F", "--folder", help="Open screenshots folder", action="store_true")
+parser.add_argument("-c", "--clipboard", help="Upload clipboard", action="store_true")
+parser.add_argument("-fd", "--filedialog", help="Open file dialog to Upload", action="store_true")
+parser.add_argument("-f", "--file", help="Upload file (input dir): ie [ slimeshot -f /home/funimeme.jpg ]", type=str)
+
+args = parser.parse_args()
+if args.screenshot:
+	area()
+elif args.folder:
+	sshots()
+elif args.clipboard:
+	clipboard()
+elif args.filedialog:
+	files()
+
+elif args.enableupload:
+	if up.get() == 0:
+		up.set(1)
+		setUp()
+	print("Uploading Enabled!!")
+
+elif args.disableupload:
+	if up.get() == 1:
+		up.set(0)
+		setUp()
+	print("Uploading Disabled!!")
+
+elif args.file:
+
+	os.system("slimeup -c " + args.file)
+
+else:
+	Button(master, text="Upload clipboard", command=clipboard, padx = 10,  width = 20).pack()
+	Button(master, text="Grab screen area", command=area, padx = 10,  width = 20).pack()
+	Button(master, text="Upload file", command=files, padx = 10,  width = 20).pack()
+	Button(master, text="Open Screenshots folder", command=sshots, padx = 10,  width = 20).pack()
+	Button(master, text="Change Pomf Clone", command=changePomf, padx = 10,  width = 20).pack()
+
+	Checkbutton(master, text='Upload?',variable=up, onvalue=1, offvalue=0, command=setUp).pack()
+
+	mainloop()
+
+
+
+
+
+
+
+
+
+
+

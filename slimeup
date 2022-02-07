@@ -1,0 +1,56 @@
+#requies xclip curl and imagemagick
+#!/usr/bin/sh
+
+upload(){
+	res=$(curl -s $upload_site -F "files[]=@$1") 
+	IFS='"' read -a array <<< $res
+	link="$(echo $res | jq -r '.files[0].url')"
+	beg="$link"
+	#echo $res
+	echo $beg
+	echo $beg | xclip -selection c
+}
+
+file="kok.png"
+upload_site="https://uguu.se/upload.php"
+
+#d=$(date +%Y-%m-%d_%H:%M:%S)
+
+while getopts ":u:f" option; do
+	case $option in
+		u)
+			upload_site="$OPTARG"
+			
+			import $file
+			upload $file
+			mkdir -p ~/Screenshots/$(date +%Y-%m) && mv $file ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).png
+			
+			;;
+		f)
+			upload $1
+			
+			;;		
+		\?)
+			import $file
+			upload $file
+			mkdir -p ~/Screenshots/$(date +%Y-%m) && mv $file ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).png
+			
+			;;
+			
+	esac
+done
+
+
+#if [ -z "$1" ]
+#	then
+		#create file
+#		import $file
+#		upload $file
+#		mkdir -p ~/Screenshots/$(date +%Y-%m) && mv $file ~/Screenshots/$(date +%Y-%m)/$(date +%Y-%m-%d_%H:%M:%S).png
+		#rm $file
+
+#	else
+		#provided file
+#		upload $1
+
+#fi
